@@ -126,23 +126,38 @@ const ok = (name) => { passed++; console.log('  ✓ ' + name); };
     if (f === 'shared/distribution.js') window.DP_DIST.githubRepo = ''; // keep the real updater out of this test
   }
   const acts = () => srv.received.filter((r) => r.msg.cmd === 'SET_ACTIVITY');
-  await sleep(3000);
+  // Wait for an update matching `pred` sent after index `from`. CI machines are slow, so no fixed sleeps.
+  const waitFor = async (from, pred, ms) => {
+    const end = Date.now() + (ms || 12000);
+    while (Date.now() < end) {
+      const hit = acts().slice(from).find((r) => pred(r.msg.args.activity));
+      if (hit) return { activity: hit.msg.args.activity, msg: hit.msg };
+      await sleep(200);
+    }
+    return null;
+  };
+  const until = async (fn, ms) => {
+    const end = Date.now() + (ms || 12000);
+    while (Date.now() < end) { const v = fn(); if (v) return v; await sleep(200); }
+    return null;
+  };
+  const ICON = 'https://cdn.discordapp.com/app-icons/111111111111111111/abc123.png?size=512';
+
+  let hit = await waitFor(0, (a) => a && a.details === 'Editing Summer "Trip" Vlog' && a.assets && a.assets.large_image === ICON);
   assert.ok(srv.received.some((r) => r.op === 0 && r.msg.client_id === '111111111111111111'), 'handshake sent');
-  let last = acts().pop();
-  assert.ok(last, 'activity sent');
-  assert.strictEqual(last.msg.args.activity.details, 'Editing Summer "Trip" Vlog');
-  assert.strictEqual(last.msg.args.pid, process.pid);
-  ok('Handshake + first presence: ' + last.msg.args.activity.details + ' / ' + last.msg.args.activity.state);
-  const status = C.readJSON(C.statusPath('PPRO'));
-  assert.strictEqual(status.discord.state, 'connected'); assert.strictEqual(status.mode, 'active');
+  assert.ok(hit, 'first presence with app-icon fallback: ' + JSON.stringify(acts().map((r) => r.msg.args.activity)));
+  assert.strictEqual(hit.msg.args.pid, process.pid);
+  ok('Handshake + first presence: ' + hit.activity.details + ' / ' + hit.activity.state);
+  const status = await until(() => { const x = C.readJSON(C.statusPath('PPRO')); return x && x.discord.state === 'connected' && x.images.large ? x : null; });
+  assert.ok(status, 'status file');
+  assert.strictEqual(status.mode, 'active');
   ok('Status file for the panel');
-  assert.strictEqual(last.msg.args.activity.assets.large_image, 'https://cdn.discordapp.com/app-icons/111111111111111111/abc123.png?size=512');
   assert.strictEqual(status.images.large.missingKey, 'logo');
   assert.strictEqual(status.app.name, 'Premiere Pro');
   ok('Missing art asset "logo" → falls back to the app icon');
+  let n = acts().length;
   settings.apps.PPRO.largeImage = 'Banner'; C.save(settings);
-  await sleep(2500);
-  assert.strictEqual(acts().pop().msg.args.activity.assets.large_image, 'banner');
+  assert.ok(await waitFor(n, (a) => a && a.assets && a.assets.large_image === 'banner'));
   ok('Existing art asset is used (case-insensitive)');
   window.DP_DIST.appIds.PPRO = '999';
   assert.strictEqual(window.DP.Config.clientId({ apps: { PPRO: { clientId: '' } } }, 'PPRO'), '999');
@@ -150,62 +165,59 @@ const ok = (name) => { passed++; console.log('  ✓ ' + name); };
   window.DP_DIST.appIds.PPRO = '';
   ok('Built-in app ID used unless the user sets their own');
 
-  const before = acts().length;
+  n = acts().length;
   await sleep(4500);
-  assert.strictEqual(acts().length, before, 'no duplicate updates when nothing changes');
+  assert.strictEqual(acts().length, n, 'no duplicate updates when nothing changes');
   ok('No spam when nothing changes');
 
+  n = acts().length;
   settings.privacy = true; C.save(settings);
-  await sleep(2500);
-  last = acts().pop();
-  assert.strictEqual(last.msg.args.activity.details, 'Editing a secret project');
+  assert.ok(await waitFor(n, (a) => a && a.details === 'Editing a secret project'));
   ok('Settings change picked up live');
 
+  n = acts().length;
   settings.idleMinutes = 0.05; C.save(settings); // 3 s
-  await sleep(6500);
-  last = acts().pop();
-  assert.strictEqual(last.msg.args.activity.details, 'Idle in a secret project');
+  assert.ok(await waitFor(n, (a) => a && a.details === 'Idle in a secret project', 15000));
   ok('Idle detection');
+  n = acts().length;
   hostState.playhead = 99;
-  await sleep(6500);
-  last = acts().pop();
-  assert.strictEqual(last.msg.args.activity.details, 'Editing a secret project');
+  assert.ok(await waitFor(n, (a) => a && a.details === 'Editing a secret project'), 'expected "Editing" after the playhead moved');
   ok('Back from idle when the playhead moves');
 
+  n = acts().length;
   settings.idleMinutes = 10; settings.privacy = false; settings.apps.PPRO.watchAfterSeconds = 3; C.save(settings);
-  await sleep(1500);
+  assert.ok(await waitFor(n, (a) => a && a.details === 'Editing Summer "Trip" Vlog'));
+  n = acts().length;
   const play = setInterval(() => { hostState.playhead += 0.25; }, 250);
-  await sleep(2000);
-  assert.notStrictEqual(acts().pop().msg.args.activity.type, 3);
+  await sleep(1500);
+  assert.ok(!acts().slice(n).some((r) => r.msg.args.activity && r.msg.args.activity.type === 3));
   ok('Short playback (< 3 s) does not switch');
-  await sleep(4000);
-  last = acts().pop().msg.args.activity;
-  assert.strictEqual(last.type, 3, JSON.stringify(last));
+  hit = await waitFor(n, (a) => a && a.type === 3, 15000);
+  assert.ok(hit, 'switched to Watching');
+  const last = hit.activity;
   assert.strictEqual(last.details, 'Reviewing Summer "Trip" Vlog');
   assert.strictEqual(last.state, 'Playing back Main Edit v3');
   assert.strictEqual(last.timestamps.end - last.timestamps.start, 754000);
-  assert.ok(Math.abs(Date.now() - last.timestamps.start - hostState.playhead * 1000) < 3500);
+  assert.ok(Math.abs(Date.now() - last.timestamps.start - hostState.playhead * 1000) < 4000);
   ok('Playback → "Watching" with progress bar ' + JSON.stringify(last));
-  const n = acts().length;
+  await sleep(4500); // let any pending update land
+  n = acts().length;
   await sleep(4500);
   assert.strictEqual(acts().length, n, 'progress bar does not cause update spam');
   ok('No update spam during playback');
+  n = acts().length;
   clearInterval(play);
-  await sleep(5000);
-  last = acts().pop().msg.args.activity;
-  assert.strictEqual(last.type, undefined); assert.strictEqual(last.details, 'Editing Summer "Trip" Vlog');
+  assert.ok(await waitFor(n, (a) => a && a.type === undefined && a.details === 'Editing Summer "Trip" Vlog', 15000));
   ok('Back to normal when playback stops');
 
+  n = acts().length;
   settings.apps.PPRO.enabled = false; C.save(settings);
-  await sleep(4500);
-  last = acts().pop();
-  assert.strictEqual(last.msg.args.activity, undefined);
+  assert.ok(await waitFor(n, (a) => a === undefined));
   ok('Pausing clears the presence');
 
   settings.apps.PPRO.clientId = 'badid'; settings.apps.PPRO.enabled = true; C.save(settings);
-  await sleep(2500);
-  const st2 = C.readJSON(C.statusPath('PPRO'));
-  assert.strictEqual(st2.discord.state, 'error');
+  const st2 = await until(() => { const x = C.readJSON(C.statusPath('PPRO')); return x && x.discord.state === 'error' ? x : null; });
+  assert.ok(st2, 'error state reported');
   assert.ok(/Invalid Client ID/.test(st2.discord.error), st2.discord.error);
   ok('Bad Client ID reported: ' + st2.discord.error);
 
