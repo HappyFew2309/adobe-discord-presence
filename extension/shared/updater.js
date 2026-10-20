@@ -55,7 +55,7 @@
       }
       if (res.statusCode !== 200) { res.resume(); return finish(new Error('HTTP ' + res.statusCode + ' for ' + url.replace(/\?.*$/, ''))); }
       var chunks = [];
-      res.on('data', function (c) { chunks.push(c); });
+      res.on('data', function (c) { chunks.push(typeof c === 'string' ? Buffer.from(c) : c); });
       res.on('end', function () { finish(null, Buffer.concat(chunks)); });
     });
     req.on('timeout', function () { req.destroy(new Error('Timed out')); });

@@ -123,6 +123,7 @@ const ok = (name) => { passed++; console.log('  ✓ ' + name); };
   }, 20);
   for (const f of ['shared/distribution.js', 'shared/config.js', 'shared/presence.js', 'shared/discord-ipc.js', 'shared/discord-app.js', 'shared/timetrack.js', 'shared/zip.js', 'shared/updater.js', 'background/background.js']) {
     vm.runInThisContext(fs.readFileSync(path.join(ext, f), 'utf8'), { filename: f });
+    if (f === 'shared/distribution.js') window.DP_DIST.githubRepo = ''; // keep the real updater out of this test
   }
   const acts = () => srv.received.filter((r) => r.msg.cmd === 'SET_ACTIVITY');
   await sleep(3000);

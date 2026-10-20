@@ -97,7 +97,7 @@ var DiscordPresenceHost = (function () {
     o.hasProject = true;
     o.project = f ? decodeURI(f.name).replace(/\.aepx?$/i, '') : 'Untitled Project';
     o.saved = !!f;
-    try { if (f) o.path = String(f.fsName); } catch (e) {}
+    try { if (f && f.fsName) o.path = String(f.fsName); } catch (e) {}
     o.items = n;
 
     if (compCache.n !== n) {
