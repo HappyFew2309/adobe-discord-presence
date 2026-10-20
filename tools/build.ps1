@@ -54,18 +54,27 @@ if ($env:ZXP_CERT_B64 -and $pass) {
   if ($LASTEXITCODE -ne 0) { throw 'Could not create a signing certificate' }
 }
 
-# 4. Sign (timestamped, so the signature stays valid after the certificate expires).
+# 4. Sign. Timestamped when a timestamp server answers (the signature then outlives the
+#    certificate); otherwise signed without one, which is valid for the certificate's 10 years.
 $zxp = Join-Path $dist "DiscordPresence-$Version.zxp"
 $signed = $false
-foreach ($tsa in 'http://timestamp.digicert.com', 'http://timestamp.sectigo.com', 'http://timestamp.globalsign.com/tsa/r6advanced1') {
-  & $signer -sign $stage $zxp $cert $pass -tsa $tsa
-  if ($LASTEXITCODE -eq 0) { $signed = $true; break }
-  Write-Warning "Timestamp server $tsa failed, trying the next one"
+foreach ($tsa in 'http://timestamp.digicert.com', 'http://timestamp.sectigo.com', 'http://timestamp.globalsign.com/tsa/r6advanced1', '') {
   Remove-Item $zxp -Force -ErrorAction SilentlyContinue
+  $signArgs = @('-sign', $stage, $zxp, $cert, $pass)
+  if ($tsa) { $signArgs += @('-tsa', $tsa) }
+  $out = (& $signer @signArgs 2>&1 | Out-String).Trim()
+  $code = $LASTEXITCODE
+  $label = if ($tsa) { $tsa } else { 'no timestamp' }
+  Write-Host "ZXPSignCmd -sign ($label): exit $code"
+  if ($out) { Write-Host $out }
+  if (Test-Path $zxp) {
+    $vout = (& $signer -verify $zxp 2>&1 | Out-String).Trim()
+    Write-Host "ZXPSignCmd -verify: exit $LASTEXITCODE $vout"
+    if ($LASTEXITCODE -eq 0) { $signed = $true; break }
+  }
+  Write-Warning "Signing with $label failed, trying the next option"
 }
-if (-not $signed) { throw 'Signing failed' }
-& $signer -verify $zxp
-if ($LASTEXITCODE -ne 0) { throw 'Signature verification failed' }
+if (-not $signed) { throw 'Signing failed (see ZXPSignCmd output above)' }
 
 # 5. Unpack the signed package; the installer ships exactly these files.
 $unpacked = Join-Path $build $id
