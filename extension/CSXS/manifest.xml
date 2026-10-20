@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0"
+                   ExtensionBundleId="com.happyfew.discordpresence"
+                   ExtensionBundleVersion="1.0.0"
+                   ExtensionBundleName="Discord Presence"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList>
+    <Extension Id="com.happyfew.discordpresence.background" Version="1.0.0" />
+    <Extension Id="com.happyfew.discordpresence.panel" Version="1.0.0" />
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <!-- Premiere Pro 2021 (15.0) and newer -->
+      <Host Name="PPRO" Version="[15.0,99.9]" />
+      <!-- After Effects 2021 (18.0) and newer -->
+      <Host Name="AEFT" Version="[18.0,99.9]" />
+      <!-- Photoshop 2021 (22.0) and newer (reports PHXS or PHSP) -->
+      <Host Name="PHXS" Version="[22.0,99.9]" />
+      <Host Name="PHSP" Version="[22.0,99.9]" />
+      <!-- Illustrator 2021 (25.0) and newer -->
+      <Host Name="ILST" Version="[25.0,99.9]" />
+      <!-- Audition 2021 (14.0) and newer -->
+      <Host Name="AUDT" Version="[14.0,99.9]" />
+      <!-- Media Encoder 2021 (15.0) and newer -->
+      <Host Name="AME" Version="[15.0,99.9]" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="9.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <!-- Invisible service: starts with the app and keeps Discord updated. -->
+    <Extension Id="com.happyfew.discordpresence.background">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./background/index.html</MainPath>
+          <ScriptPath>./jsx/host.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>false</AutoVisible>
+          <StartOn>
+            <Event>com.adobe.csxs.events.ApplicationActivate</Event>
+            <Event>applicationActivate</Event>
+          </StartOn>
+        </Lifecycle>
+        <UI>
+          <Type>Custom</Type>
+          <Geometry>
+            <Size>
+              <Height>1</Height>
+              <Width>1</Width>
+            </Size>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+
+    <!-- Settings + live status panel: Window > Extensions > Discord Presence -->
+    <Extension Id="com.happyfew.discordpresence.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./panel/index.html</MainPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Discord Presence</Menu>
+          <Geometry>
+            <Size>
+              <Height>620</Height>
+              <Width>380</Width>
+            </Size>
+            <MinSize>
+              <Height>300</Height>
+              <Width>300</Width>
+            </MinSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

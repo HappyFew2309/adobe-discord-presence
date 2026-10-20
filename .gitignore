@@ -1,0 +1,6 @@
+build/
+dist/
+tools/bin/
+test/shots/
+node_modules/
+*.p12

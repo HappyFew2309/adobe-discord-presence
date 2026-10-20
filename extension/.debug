@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Remote DevTools for troubleshooting: open http://localhost:<port> in Chrome while the app is running. -->
+<ExtensionList>
+  <Extension Id="com.happyfew.discordpresence.background">
+    <HostList>
+      <Host Name="PPRO" Port="8098" />
+      <Host Name="AEFT" Port="8099" />
+      <Host Name="PHXS" Port="8100" />
+      <Host Name="ILST" Port="8101" />
+      <Host Name="AUDT" Port="8102" />
+      <Host Name="AME" Port="8103" />
+    </HostList>
+  </Extension>
+  <Extension Id="com.happyfew.discordpresence.panel">
+    <HostList>
+      <Host Name="PPRO" Port="8096" />
+      <Host Name="AEFT" Port="8097" />
+    </HostList>
+  </Extension>
+</ExtensionList>

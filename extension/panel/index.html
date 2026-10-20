@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Discord Presence</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-name">Discord Presence</span>
+      <select class="host-select" id="hostSelect" title="Which app's settings you're editing"></select>
+    </div>
+    <div class="pill" id="statusPill"><span class="dot"></span><span id="statusText">Starting…</span></div>
+  </header>
+
+  <main>
+    <div class="banner" id="updateBanner" hidden></div>
+
+    <!-- Setup prompt (shown until a Client ID is set) -->
+    <section class="setup" id="setupCard" hidden>
+      <h2>Connect your Discord app</h2>
+      <p>Discord shows the name of the application you create, so name it <b id="setupAppName">Premiere Pro</b>.</p>
+      <ol>
+        <li>Open the <a href="#" data-url="https://discord.com/developers/applications">Discord Developer Portal</a> and click <b>New Application</b>.</li>
+        <li>Copy the <b>Application ID</b> from General Information.</li>
+        <li>Paste it below. Optional: under <b>Rich Presence → Art Assets</b>, upload an image named <code>logo</code>.</li>
+      </ol>
+      <label class="field">
+        <span>Application (Client) ID</span>
+        <input type="text" data-key="app.clientId" placeholder="e.g. 1234567890123456789" spellcheck="false" inputmode="numeric">
+      </label>
+    </section>
+
+    <!-- Live preview -->
+    <section class="preview-wrap">
+      <div class="preview" id="preview">
+        <div class="pv-kicker" id="pvKicker">Playing</div>
+        <div class="pv-body">
+          <div class="pv-art">
+            <div class="pv-large" id="pvLarge"><span class="pv-glyph" id="pvGlyph"></span></div>
+            <div class="pv-small" id="pvSmall" hidden></div>
+          </div>
+          <div class="pv-lines">
+            <div class="pv-name" id="pvName">Premiere Pro</div>
+            <div class="pv-line" id="pvDetails"></div>
+            <div class="pv-line" id="pvState"></div>
+            <div class="pv-line pv-time" id="pvTime"></div>
+            <div class="pv-progress" id="pvProgress" hidden><div class="pv-bar"><div class="pv-fill" id="pvFill"></div></div><div class="pv-ptimes"><span id="pvPos"></span><span id="pvDur"></span></div></div>
+          </div>
+        </div>
+        <div class="pv-buttons" id="pvButtons"></div>
+        <div class="pv-empty" id="pvEmpty" hidden>Nothing is showing on Discord right now.</div>
+      </div>
+      <div class="actions">
+        <label class="switch" title="Show or hide your status for this app">
+          <input type="checkbox" data-key="app.enabled">
+          <span class="track"><span class="thumb"></span></span>
+          <span class="switch-label">Show on Discord</span>
+        </label>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="btnReconnect" title="Reconnect to Discord and re-check your app's images">Reconnect</button>
+      </div>
+      <div class="note" id="note" hidden></div>
+      <div class="note warn" id="imgNote" hidden></div>
+    </section>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="text" role="tab">Text</button>
+      <button class="tab" data-tab="media" role="tab">Images &amp; links</button>
+      <button class="tab" data-tab="behavior" role="tab">Behavior</button>
+      <button class="tab" data-tab="time" role="tab">Time</button>
+    </nav>
+
+    <!-- TEXT -->
+    <section class="pane" data-pane="text">
+      <div class="group">
+        <div class="group-title" id="workingTitle">While working</div>
+        <label class="field"><span>Top line</span><input type="text" data-key="app.details" data-template spellcheck="false"></label>
+        <label class="field"><span>Bottom line</span><input type="text" data-key="app.state" data-template spellcheck="false"></label>
+      </div>
+      <div class="group" data-only="PPRO">
+        <div class="group-title">While playing back the timeline</div>
+        <label class="field"><span>Top line</span><input type="text" data-key="app.watchDetails" data-template spellcheck="false"></label>
+        <label class="field"><span>Bottom line</span><input type="text" data-key="app.watchState" data-template spellcheck="false"></label>
+      </div>
+      <div class="group" data-only="AME">
+        <div class="group-title">While encoding</div>
+        <label class="field"><span>Top line</span><input type="text" data-key="app.renderDetails" data-template spellcheck="false"></label>
+        <label class="field"><span>Bottom line</span><input type="text" data-key="app.renderState" data-template spellcheck="false"></label>
+      </div>
+      <div class="group" data-only="AEFT">
+        <div class="group-title">While rendering</div>
+        <label class="field"><span>Top line</span><input type="text" data-key="app.renderDetails" data-template spellcheck="false"></label>
+        <label class="field"><span>Bottom line</span><input type="text" data-key="app.renderState" data-template spellcheck="false"></label>
+      </div>
+      <div class="group" data-not="AME">
+        <div class="group-title">When idle</div>
+        <label class="field"><span>Top line</span><input type="text" data-key="app.idleDetails" data-template spellcheck="false"></label>
+        <label class="field"><span>Bottom line</span><input type="text" data-key="app.idleState" data-template spellcheck="false"></label>
+      </div>
+      <div class="group" data-not="AME">
+        <div class="group-title">No project open</div>
+        <label class="field"><span>Top line</span><input type="text" data-key="app.noProjectDetails" data-template spellcheck="false"></label>
+        <label class="field"><span>Bottom line</span><input type="text" data-key="app.noProjectState" data-template spellcheck="false"></label>
+      </div>
+
+      <div class="vars">
+        <div class="vars-head">
+          <span class="group-title">Variables</span>
+          <span class="hint">Click to insert. Parts split by “ · ” hide when their variable is empty.</span>
+        </div>
+        <div class="var-list" id="varList"></div>
+      </div>
+      <div class="row-end"><button class="btn ghost small" id="btnResetText">Reset text to defaults</button></div>
+    </section>
+
+    <!-- MEDIA -->
+    <section class="pane" data-pane="media" hidden>
+      <div class="group">
+        <div class="group-title">Large image</div>
+        <label class="field"><span>Art asset name, image URL, or <code>icon</code> for the app icon</span><input type="text" data-key="app.largeImage" placeholder="logo  ·  icon  ·  https://…/image.png" spellcheck="false"></label>
+        <p class="hint" id="assetHint"></p>
+        <label class="field"><span>Hover text</span><input type="text" data-key="app.largeText" data-template spellcheck="false"></label>
+      </div>
+      <div class="group">
+        <div class="group-title">Small badge</div>
+        <label class="field"><span>Asset name or image URL</span><input type="text" data-key="app.smallImage" placeholder="optional" spellcheck="false"></label>
+        <label class="field"><span>Hover text</span><input type="text" data-key="app.smallText" data-template spellcheck="false"></label>
+        <label class="field"><span>Badge while idle</span><input type="text" data-key="app.idleSmallImage" placeholder="optional, e.g. idle" spellcheck="false"></label>
+        <label class="field" data-only="PPRO"><span>Badge while playing back</span><input type="text" data-key="app.watchSmallImage" placeholder="optional, e.g. play" spellcheck="false"></label>
+        <label class="field" data-only="AEFT AME"><span>Badge while rendering</span><input type="text" data-key="app.renderSmallImage" placeholder="optional, e.g. render" spellcheck="false"></label>
+      </div>
+      <div class="group">
+        <div class="group-title">Buttons <span class="muted">· shared by both apps</span></div>
+        <div class="pair">
+          <label class="field"><span>Label</span><input type="text" data-key="buttons.0.label" maxlength="32" placeholder="My portfolio"></label>
+          <label class="field grow"><span>Link</span><input type="url" data-key="buttons.0.url" placeholder="https://…" spellcheck="false"></label>
+        </div>
+        <div class="pair">
+          <label class="field"><span>Label</span><input type="text" data-key="buttons.1.label" maxlength="32" placeholder="YouTube"></label>
+          <label class="field grow"><span>Link</span><input type="url" data-key="buttons.1.url" placeholder="https://…" spellcheck="false"></label>
+        </div>
+        <p class="hint">Discord hides your own buttons from you; friends will see them.</p>
+      </div>
+      <div class="group">
+        <div class="group-title">Discord app</div>
+        <label class="field"><span id="ownIdLabel">Application (Client) ID</span><input type="text" data-key="app.clientId" spellcheck="false" inputmode="numeric"></label>
+        <p class="hint"><a href="#" data-url="https://discord.com/developers/applications">Open the Developer Portal</a> to change the name, icon or art assets.</p>
+      </div>
+    </section>
+
+    <!-- BEHAVIOR -->
+    <section class="pane" data-pane="behavior" hidden>
+      <div class="group">
+        <div class="group-title">Privacy</div>
+        <label class="check"><input type="checkbox" data-key="privacy"><span>Hide project, sequence and comp names</span></label>
+        <label class="field"><span>Show this instead of the project name</span><input type="text" data-key="privacyLabel"></label>
+        <label class="field"><span>Always private: projects saved in these folders (one per line)</span>
+          <textarea data-key="privateFolders" data-list rows="3" spellcheck="false" placeholder="Clients&#10;D:\Work\NDA"></textarea>
+        </label>
+        <p class="hint">A folder name (<code>Clients</code>) matches anywhere in the path; a full path matches only that folder.</p>
+        <div class="private-row" id="privateRow" hidden>
+          <span id="privateText"></span>
+          <button class="btn ghost small" id="btnPrivate">Keep this project private</button>
+        </div>
+      </div>
+      <div class="group" data-only="AME">
+        <div class="group-title">Media Encoder</div>
+        <label class="check"><input type="checkbox" data-key="app.onlyWhileEncoding"><span>Only show my status while encoding</span></label>
+        <label class="check"><input type="checkbox" data-key="app.renderCountdown"><span>Show time left for the current item</span></label>
+      </div>
+      <div class="group" data-only="PPRO">
+        <div class="group-title">Playback</div>
+        <label class="check"><input type="checkbox" data-key="app.autoWatch"><span>Switch my status while the timeline plays</span></label>
+        <div class="pair">
+          <label class="field"><span>After (seconds)</span><input type="number" min="1" max="120" step="1" data-key="app.watchAfterSeconds"></label>
+          <label class="field grow"><span>Show as</span>
+            <select data-key="app.watchType">
+              <option value="3">Watching</option>
+              <option value="2">Listening to</option>
+              <option value="0">Playing</option>
+              <option value="5">Competing in</option>
+            </select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" data-key="app.watchProgress"><span>Show a progress bar (playhead in the sequence)</span></label>
+        <p class="hint">Goes back to normal as soon as playback stops.</p>
+      </div>
+      <div class="group">
+        <div class="group-title">Timer</div>
+        <label class="field"><span>Elapsed time counts from</span>
+          <select data-key="elapsed">
+            <option value="project">Opening the current project</option>
+            <option value="session">Launching the app</option>
+            <option value="off">Don't show a timer</option>
+          </select>
+        </label>
+      </div>
+      <div class="group">
+        <div class="group-title">Idle</div>
+        <div class="pair">
+          <label class="field"><span>Idle after (minutes)</span><input type="number" min="0" max="240" step="1" data-key="idleMinutes"></label>
+          <label class="field grow"><span>When idle</span>
+            <select data-key="idleAction">
+              <option value="show">Show the idle text</option>
+              <option value="clear">Hide my status</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint">Idle means nothing changed: playhead, clips, layers, selection, active comp. 0 turns it off.</p>
+      </div>
+      <div class="group">
+        <div class="group-title">Discord display</div>
+        <label class="field"><span>Activity type</span>
+          <select data-key="app.activityType">
+            <option value="0">Playing</option>
+            <option value="3">Watching</option>
+            <option value="2">Listening to</option>
+            <option value="5">Competing in</option>
+          </select>
+        </label>
+        <label class="field"><span>Member list shows</span>
+          <select data-key="app.statusDisplay">
+            <option value="0">App name (“Playing Premiere Pro”)</option>
+            <option value="2">Top line (“Editing My Project”)</option>
+            <option value="1">Bottom line</option>
+          </select>
+        </label>
+      </div>
+      <div class="group">
+        <div class="group-title">Updates</div>
+        <div class="update-row"><span id="updateText">—</span><button class="btn ghost small" id="btnCheckUpdate">Check now</button></div>
+        <label class="check"><input type="checkbox" data-key="updates.check"><span>Check for updates automatically</span></label>
+        <label class="check"><input type="checkbox" data-key="updates.auto"><span>Install updates automatically</span></label>
+      </div>
+      <div class="group">
+        <div class="group-title">Advanced</div>
+        <label class="field"><span>Check every (seconds)</span><input type="number" min="2" max="60" step="1" data-key="pollSeconds"></label>
+        <label class="check"><input type="checkbox" data-key="enabled"><span>Enabled in all apps</span></label>
+        <label class="check"><input type="checkbox" data-key="trackTime"><span>Track my working time (stays on this computer)</span></label>
+        <div class="links">
+          <a href="#" id="openFolder">Open settings folder</a>
+          <a href="#" id="openLog">Open log</a>
+        </div>
+      </div>
+    </section>
+    <!-- TIME -->
+    <section class="pane" data-pane="time" hidden>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Today</div><div class="stat-value" id="tToday">—</div></div>
+        <div class="stat"><div class="stat-label">Last 7 days</div><div class="stat-value" id="tWeek">—</div></div>
+      </div>
+      <div class="week" id="tDays"></div>
+      <div class="group">
+        <div class="group-title">Top projects · last 7 days</div>
+        <div class="proj-list" id="tProjects"></div>
+      </div>
+      <p class="hint">Counts time you're actively working (idle time isn't counted). Use <code>{todayTime}</code>, <code>{projectTime}</code> or <code>{weekTime}</code> in your status.</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast">Saved</div>
+
+  <script src="../shared/CSInterface.js"></script>
+  <script src="../shared/distribution.js"></script>
+  <script src="../shared/config.js"></script>
+  <script src="../shared/presence.js"></script>
+  <script src="../shared/timetrack.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

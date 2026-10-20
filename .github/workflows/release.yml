@@ -1,0 +1,67 @@
+# Publishes a release when you push a version tag:
+#   git tag v1.2.0 && git push origin v1.2.0
+# or run it from the Actions tab ("Run workflow") and type a version.
+#
+# Produces a GitHub Release with:
+#   DiscordPresence-Setup-<v>.exe   Windows installer (what you tell people to download)
+#   DiscordPresence-<v>.zxp         signed package (macOS users / ZXP installers; used by the auto-updater)
+#   checksums.txt                   SHA-256 hashes (the auto-updater checks these)
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 1.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node test/run.js
+      - run: node test/features.js
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Work out the version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = '${{ github.event.inputs.version }}'
+          if (-not $v) { $v = '${{ github.ref_name }}' }
+          $v = $v -replace '^v', ''
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build signed package + installer
+        shell: pwsh
+        env:
+          ZXP_CERT_B64: ${{ secrets.ZXP_CERT_B64 }}
+          ZXP_CERT_PASSWORD: ${{ secrets.ZXP_CERT_PASSWORD }}
+        run: ./tools/build.ps1 -Version '${{ steps.ver.outputs.version }}'
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: v${{ steps.ver.outputs.version }}
+          files: dist/*
+          generate_release_notes: true
